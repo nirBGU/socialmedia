@@ -256,6 +256,20 @@ def user_goals_analysis():
             options=["All Platforms"] + sorted(list(PLATFORM_COLORS.keys())),
             help="Choose a platform to analyze or view all platforms"
         )
+
+        group_options = {
+        'Age_Group': 'Age Group',
+        'Country': 'Country',
+        'Income_Group': 'Income Level',
+        'Occupation': 'Occupation'
+    }
+        selected_group = st.selectbox(
+            "Filter by Category",
+            options=list(group_options.keys()),
+            format_func=lambda x: group_options[x],
+            help="Select one category to view the goal distribution by"
+        )
+
     
     with col2:
         if platform != "All Platforms":
@@ -325,10 +339,10 @@ def user_goals_analysis():
             title=dict(
                 text=title_with_emoji if title else "",  # Empty for platform specific views
                 font=dict(size=24, color="white"),
-                y=0.95
+                y=0.97
             ),
             height=500,
-            margin=dict(l=60, r=40, t=100, b=40),
+            margin=dict(l=60, r=40, t=80, b=40),
             showlegend=show_legend,
             yaxis=dict(
                 title=dict(
@@ -352,65 +366,38 @@ def user_goals_analysis():
             ),
             legend=dict(
                 orientation="h",
-                yanchor="bottom",
-                y=1.3,
+                yanchor="top",
+                y=0.88,  # טיפה מתחת לכותרת
                 xanchor="center",
                 x=0.5,
                 font=dict(size=20),
                 bgcolor="rgba(0,0,0,0.5)",
                 itemwidth=50
             ) if show_legend else {},
-        )
+            )
         return fig
     
     if platform == "All Platforms":
         goals = sorted(df['Primary Social Media Goal'].unique())
         
-        # Create central legend without axis
-        legend_fig = go.Figure()
-        goal_colors = {
-            'Education': '#4267B2',  # Light blue
-            'Entertainment': '#f39c12',  # Orange
-            'Networking': '#2ecc71',  # Green
-            'News': '#E1306C',  # Pink
+       
+        title_dict = {
+            'Age_Group': "Goals Distribution by Age Group",
+            'Country': "Goals Distribution by Country",
+            'Income_Group': "Goals Distribution by Income Level",
+            'Occupation': "Goals Distribution by Occupation"
         }
-        for goal in sorted(goals):
-            legend_fig.add_trace(go.Bar(
-                name=goal,
-                x=[0],
-                y=[0],
-                marker_color=goal_colors.get(goal),
-                showlegend=True
-            ))
-        legend_fig.update_layout(
-            height=100,
-            margin=dict(l=0, r=0, t=0, b=0),
-            legend=dict(
-                orientation="h",
-                yanchor="middle",
-                y=0.5,
-                xanchor="center",
-                x=0.5,
-                font=dict(size=20),
-                itemwidth=50
-            ),
-            xaxis={'visible': False},
-            yaxis={'visible': False},
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+
+        fig = create_distribution_plot(
+            df, 
+            selected_group, 
+            title_dict[selected_group], 
+            show_legend=True, 
+            platform="All Platforms"
         )
-        st.plotly_chart(legend_fig, use_container_width=True)
-        
-        plots = [
-            ('Age_Group', "Goals Distribution by Age Group"),
-            ('Country', "Goals Distribution by Country"),
-            ('Income_Group', "Goals Distribution by Income Level"),
-            ('Occupation', "Goals Distribution by Occupation")
-        ]
-        
-        for group, title in plots:
-            fig = create_distribution_plot(df, group, title, show_legend=False, platform="All Platforms")
+        if fig:
             st.plotly_chart(fig, use_container_width=True)
+
             
     else:
         if not goals:
@@ -425,57 +412,37 @@ def user_goals_analysis():
         """, unsafe_allow_html=True)
         
         platform_df = df[df['Primary Platform'] == platform]
-        
-        plots = [
-            ('Age_Group', "Age Distribution"),
-            ('Country', "Country Distribution"),
-            ('Income_Group', "Income Distribution"),
-            ('Occupation', "Occupation Distribution")
-        ]
-        
-        # Add spacing between rows
-        st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
-        
-        # First row
-        cols1 = st.columns(2)
-        for i, ((group, title), col) in enumerate(zip(plots[:2], cols1)):
-            with col:
-                fig = create_distribution_plot(
-                    platform_df, 
-                    group, 
-                    "",  # Empty title
-                    show_legend=(i == 0),
-                    platform=platform,
-                    selected_goals=goals
-                )
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                    # Add title below graph with emoji
-                    emojis = {'Age_Group': '👥', 'Country': '🌎'}
-                    st.markdown(f"<h3 style='text-align: center;'>{title} {emojis[group]}</h3>", 
-                              unsafe_allow_html=True)
-        
-        # Add spacing between rows
-        st.markdown("<div style='margin-bottom: 3rem;'></div>", unsafe_allow_html=True)
-        
-        # Second row
-        cols2 = st.columns(2)
-        for i, ((group, title), col) in enumerate(zip(plots[2:], cols2)):
-            with col:
-                fig = create_distribution_plot(
-                    platform_df, 
-                    group, 
-                    "",  # Empty title
-                    show_legend=False,
-                    platform=platform,
-                    selected_goals=goals
-                )
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                    # Add title below graph with emoji
-                    emojis = {'Income_Group': '💰', 'Occupation': '💼'}
-                    st.markdown(f"<h3 style='text-align: center;'>{title} {emojis[group]}</h3>", 
-                              unsafe_allow_html=True)
+
+        title_dict = {
+            'Age_Group': "Age Distribution",
+            'Country': "Country Distribution",
+            'Income_Group': "Income Distribution",
+            'Occupation': "Occupation Distribution"
+        }
+
+        emojis = {
+            'Age_Group': '👥',
+            'Country': '🌎',
+            'Income_Group': '💰',
+            'Occupation': '💼'
+        }
+
+        fig = create_distribution_plot(
+            platform_df, 
+            selected_group, 
+            "",  # No title inside plot
+            show_legend=True,
+            platform=platform,
+            selected_goals=goals
+        )
+
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown(
+                f"<h3 style='text-align: center;'>{title_dict[selected_group]} {emojis[selected_group]}</h3>",
+                unsafe_allow_html=True
+            )
+
                     
 
 #################
