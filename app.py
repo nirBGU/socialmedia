@@ -224,11 +224,6 @@ def create_platform_bar_chart(platform_percentages, selected_device):
     
     return fig
 
-###################
-# QUESTION 1
-###############
-
-
 # Platform colors dictionary
 PLATFORM_COLORS = {
     'Instagram': '#E1306C',
@@ -238,18 +233,58 @@ PLATFORM_COLORS = {
     'YouTube': '#FF0000'
 }
 
+def create_small_multiples_by_goal(data_df, group_col):
+    goal_colors = {
+        'Education': '#4267B2',
+        'Entertainment': '#f39c12',
+        'Networking': '#2ecc71',
+        'News': '#E1306C',
+    }
+
+    goals = sorted(data_df['Primary Social Media Goal'].unique())
+    plots = []
+
+    total_by_group = data_df.groupby(group_col).size()
+
+    for goal in goals:
+        goal_df = data_df[data_df['Primary Social Media Goal'] == goal]
+        counts = goal_df.groupby(group_col).size()
+        percentages = (counts / total_by_group * 100).reset_index()
+        percentages.columns = [group_col, 'Percentage']
+
+        fig = px.bar(
+            percentages,
+            x=group_col,
+            y='Percentage',
+            color_discrete_sequence=[goal_colors.get(goal, '#888')],
+            title=goal
+        )
+
+        fig.update_layout(
+            height=300,
+            margin=dict(t=40, b=40, l=40, r=20),
+            title=dict(font=dict(size=20), x=0.5),
+            xaxis_title=None,
+            yaxis_title="%",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+        )
+        plots.append(fig)
+
+    return plots
+
 def user_goals_analysis():
     st.title("User Goals Analysis")
     df = load_data()
-    
+
     with st.expander("📊 Analysis Guide and Insights", expanded=True):
         st.markdown("""
             [This section will contain guidance on how to interpret the visualizations 
             and key insights from the data analysis.]
         """)
-    
+
     col1, col2 = st.columns([1, 2])
-    
+
     with col1:
         platform = st.selectbox(
             "Select Platform",
@@ -258,11 +293,11 @@ def user_goals_analysis():
         )
 
         group_options = {
-        'Age_Group': 'Age Group',
-        'Country': 'Country',
-        'Income_Group': 'Income Level',
-        'Occupation': 'Occupation'
-    }
+            'Age_Group': 'Age Group',
+            'Country': 'Country',
+            'Income_Group': 'Income Level',
+            'Occupation': 'Occupation'
+        }
         selected_group = st.selectbox(
             "Filter by Category",
             options=list(group_options.keys()),
@@ -270,7 +305,6 @@ def user_goals_analysis():
             help="Select one category to view the goal distribution by"
         )
 
-    
     with col2:
         if platform != "All Platforms":
             goals = st.multiselect(
@@ -279,42 +313,48 @@ def user_goals_analysis():
                 default=[df['Primary Social Media Goal'].iloc[0]],
                 help="Select one or more goals to analyze"
             )
-    
+
     st.markdown("---")
-    
+
     def create_distribution_plot(data_df, group_col, title, show_legend=True, platform=None, selected_goals=None):
         goals_to_plot = selected_goals if selected_goals is not None else sorted(data_df['Primary Social Media Goal'].unique())
-        
-        # Custom color map for goals
+
         goal_colors = {
-            'Education': '#4267B2',  # Light blue
-            'Entertainment': '#f39c12',  # Orange
-            'Networking': '#2ecc71',  # Green
-            'News': '#E1306C',  # Pink
+            'Education': '#4267B2',
+            'Entertainment': '#f39c12',
+            'Networking': '#2ecc71',
+            'News': '#E1306C',
         }
-        # Ensure consistent color order in legend
         goals_to_plot = sorted(goals_to_plot)
-        
-        # Filter to exactly 6 occupations if showing occupation data
+
         if group_col == 'Occupation':
             selected_occupations = ['Professional', 'Student', 'Self-Employed', 'Retired', 'Unemployed', 'Other']
             data_df = data_df[data_df[group_col].isin(selected_occupations)]
-        
+
         total_by_group = data_df.groupby(group_col).size()
         plot_data = []
-        
+
         for goal in goals_to_plot:
             goal_df = data_df[data_df['Primary Social Media Goal'] == goal]
             counts = goal_df.groupby(group_col).size()
             percentages = (counts / total_by_group * 100).reset_index()
             percentages['Goal'] = goal
             plot_data.append(percentages)
-            
+
         if not plot_data:
             return None
-            
+
         plot_df = pd.concat(plot_data)
-        
+
+        title_emojis = {
+            'Age_Group': '👥',
+            'Country': '🌎',
+            'Income_Group': '💰',
+            'Occupation': '💼'
+        }
+
+        title_with_emoji = f"{title} {title_emojis.get(group_col, '')}"
+
         fig = px.bar(
             plot_df,
             x=group_col,
@@ -324,20 +364,10 @@ def user_goals_analysis():
             color_discrete_map=goal_colors,
             labels={'0': 'Percentage of Users', group_col: group_col.replace('_', ' ')}
         )
-        
-        # Add emojis to titles
-        title_emojis = {
-            'Age_Group': '👥',
-            'Country': '🌎',
-            'Income_Group': '💰',
-            'Occupation': '💼'
-        }
-        
-        title_with_emoji = f"{title} {title_emojis.get(group_col, '')}"
-        
+
         fig.update_layout(
             title=dict(
-                text=title_with_emoji if title else "",  # Empty for platform specific views
+                text=title_with_emoji if title else "",
                 font=dict(size=24, color="white"),
                 y=0.97
             ),
@@ -367,20 +397,19 @@ def user_goals_analysis():
             legend=dict(
                 orientation="h",
                 yanchor="top",
-                y=0.88,  # טיפה מתחת לכותרת
+                y=0.88,
                 xanchor="center",
                 x=0.5,
                 font=dict(size=20),
                 bgcolor="rgba(0,0,0,0.5)",
                 itemwidth=50
             ) if show_legend else {},
-            )
+        )
         return fig
-    
+
     if platform == "All Platforms":
         goals = sorted(df['Primary Social Media Goal'].unique())
-        
-       
+
         title_dict = {
             'Age_Group': "Goals Distribution by Age Group",
             'Country': "Goals Distribution by Country",
@@ -389,28 +418,32 @@ def user_goals_analysis():
         }
 
         fig = create_distribution_plot(
-            df, 
-            selected_group, 
-            title_dict[selected_group], 
-            show_legend=True, 
+            df,
+            selected_group,
+            title_dict[selected_group],
+            show_legend=True,
             platform="All Platforms"
         )
         if fig:
             st.plotly_chart(fig, use_container_width=True)
 
-            
+        st.markdown("### Small Multiples by Goal 🎯")
+        small_figs = create_small_multiples_by_goal(df, selected_group)
+        for f in small_figs:
+            st.plotly_chart(f, use_container_width=True)
+
     else:
         if not goals:
             st.warning("Please select at least one goal to analyze.")
             return
-        
+
         st.markdown(f"""
             <h2 style='text-align: center;'>
                 <span style='color: white;'>Goal Distribution Analysis for </span>
                 <span style='color: {PLATFORM_COLORS[platform]};'>{platform}</span>
             </h2>
         """, unsafe_allow_html=True)
-        
+
         platform_df = df[df['Primary Platform'] == platform]
 
         title_dict = {
@@ -428,9 +461,9 @@ def user_goals_analysis():
         }
 
         fig = create_distribution_plot(
-            platform_df, 
-            selected_group, 
-            "",  # No title inside plot
+            platform_df,
+            selected_group,
+            "",
             show_legend=True,
             platform=platform,
             selected_goals=goals
