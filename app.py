@@ -179,9 +179,9 @@ def create_welcome_page():
 
 PLATFORM_COLORS = {
     'Facebook': '#4267B2',
-    'Instagram': '#E1306C',
+    'Instagram': '#bc2a8d',
     'Twitter': '#1DA1F2',
-    'TikTok': '#69C9D0',
+    'TikTok': '#000000',
     'YouTube': '#FF0000'
 }
 
@@ -269,10 +269,10 @@ def create_distribution_plot(data_df, group_col, title, show_legend=True, select
         title=dict(
             text=title if title else "",
             font=dict(size=24, color="white"),
-            y=0.97
+            y=0.98
         ),
         height=500,
-        margin=dict(l=60, r=40, t=80, b=40),
+        margin=dict(l=60, r=40, t=120, b=40),
         showlegend=show_legend,
         yaxis=dict(
             title=dict(
@@ -294,17 +294,30 @@ def create_distribution_plot(data_df, group_col, title, show_legend=True, select
             font_color="white",
             bgcolor="rgba(0,0,0,0.8)"
         ),
+# legend=dict(
+#     orientation="h",
+#     yanchor="top",
+#     y=-0.15,  #
+#     xanchor="center",
+#     x=0.5,
+#     font=dict(size=16),
+#     bgcolor="rgba(0,0,0,0)",  
+#     bordercolor="rgba(0,0,0,0)",
+#     borderwidth=1,
+#     itemwidth=50
 legend=dict(
-    orientation="h",
-    yanchor="bottom",
-    y=1.02,  # 👈 טיפ טיפה נמוך יותר מהכותרת
-    xanchor="center",
-    x=0.5,
-    font=dict(size=16),
-    bgcolor="rgba(0,0,0,0.3)",  # 👈 בוקס שקוף כהה-עדין
-    bordercolor="rgba(255,255,255,0.3)",
-    borderwidth=1,
-    itemwidth=50
+        orientation="h",
+        
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5,
+        font=dict(size=16),
+       
+        bgcolor="rgba(0,0,0,0)",
+        bordercolor="rgba(0,0,0,0)",
+        borderwidth=0,
+        itemwidth=50
 )
         if show_legend else {},
     )
@@ -376,26 +389,47 @@ def user_goals_analysis(global_platform):
 
 
 
+
+
+
+
+
+
+
+
 def engagement_metrics_analysis(global_platform):
     st.title("User Engagement Analysis")
-    st.markdown("<div style='height: 50px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
     
     df = load_data()
+
+    # Filter for the main (sidebar-selected) platform if not "All Platforms"
     if global_platform != "All Platforms":
-        df = df[df['Primary Platform'] == global_platform]
+        df_main = df[df['Primary Platform'] == global_platform]
         st.markdown(f"### Analysis for {global_platform}")
     else:
+        df_main = df.copy()
         st.markdown("### Analysis for All Platforms")
-    
-    col1, col2 = st.columns([4, 1])
+
+    # Create two columns: left for the chart, right for metric & controls
+    # Changing ratio to [7, 3] => ~70% for the chart, ~30% for the controls
+    col1, col2 = st.columns([7, 3])
 
     with col2:
-        st.markdown("<div style='height: 100px'></div>", unsafe_allow_html=True)
-        st.markdown("<h2 style='font-size: 22px;'>Select Metric</h2>", unsafe_allow_html=True)
-        metric_choice = st.radio(" ", ["Notifications", "Ad Interactions"], key="metric_choice")
+        # 1) Metric choice
+        st.markdown("<h4>Select Metric</h4>", unsafe_allow_html=True)
+        metric_choice = st.radio(
+            "",
+            ["Notifications", "Ad Interactions"],
+            key="metric_choice"
+        )
 
-    with col1:
-        max_range = 200 if metric_choice == "Notifications" else 50
+        
+        if metric_choice == "Notifications":
+            max_range = 200
+        else:
+            max_range = 50
+
         range_values = st.slider(
             "Choose a range",
             min_value=0,
@@ -405,6 +439,25 @@ def engagement_metrics_analysis(global_platform):
             key="range_slider"
         )
 
+        # 2) Multiple platforms comparison
+        
+        st.markdown("<h4 style='white-space: nowrap;'>Compare with additional platforms</h4>", 
+                    unsafe_allow_html=True)
+
+        all_platforms = ["Facebook", "Instagram", "TikTok", "Twitter", "YouTube"]
+        if global_platform != "All Platforms":
+            possible_comparison_platforms = [p for p in all_platforms if p != global_platform]
+        else:
+            possible_comparison_platforms = all_platforms
+
+        selected_comparison_platforms = st.multiselect(
+            "Select one or more platforms to compare",
+            options=possible_comparison_platforms,
+            default=[]
+        )
+
+    with col1:
+        # Helper function for correlation data
         def prepare_correlation_data(df_subset, metric_type, r_values):
             if metric_type == "Notifications":
                 filtered_df = df_subset[
@@ -422,52 +475,99 @@ def engagement_metrics_analysis(global_platform):
                 x_column = 'Ad Interaction Count'
             return correlation, x_column
 
+    
+        PLATFORM_COLORS = {
+            'Facebook': '#4267B2',
+            'Instagram': '#bc2a8d', 
+            'Twitter': '#1DA1F2',
+            'TikTok': '#000000',     
+            'YouTube': '#FF0000'
+        }
+
         fig = go.Figure()
-        correlation_data, x_column = prepare_correlation_data(df, metric_choice, range_values)
-        
-        line_color = PLATFORM_COLORS.get(global_platform, '#000000') if global_platform != "All Platforms" else '#000000'
+
+        # Main platform trace
+        correlation_data_main, x_column_main = prepare_correlation_data(df_main, metric_choice, range_values)
+        if global_platform != "All Platforms":
+            line_color_main = PLATFORM_COLORS.get(global_platform, '#000000')
+            main_name = global_platform
+        else:
+            line_color_main = '#000000'
+            main_name = "All Platforms"
+
         fig.add_trace(go.Scatter(
-            x=correlation_data[x_column],
-            y=correlation_data['Daily Social Media Time (hrs)'],
+            x=correlation_data_main[x_column_main],
+            y=correlation_data_main['Daily Social Media Time (hrs)'],
             mode='lines',
-            name=global_platform,
-            line=dict(shape='spline', width=3, color=line_color),
+            name=main_name,
+            line=dict(shape='spline', width=3, color=line_color_main),
         ))
 
-        st.markdown(
-            f"<h1 style='text-align: center; font-size: 28px; margin-bottom: 20px;'>Impact of {metric_choice} on Daily Usage</h1>",
-            unsafe_allow_html=True
-        )
+        # Comparison traces
+        for compare_plat in selected_comparison_platforms:
+            df_compare = df[df['Primary Platform'] == compare_plat]
+            correlation_data_compare, x_column_compare = prepare_correlation_data(df_compare, metric_choice, range_values)
+            line_color_compare = PLATFORM_COLORS.get(compare_plat, '#666666')
+            fig.add_trace(go.Scatter(
+                x=correlation_data_compare[x_column_compare],
+                y=correlation_data_compare['Daily Social Media Time (hrs)'],
+                mode='lines',
+                name=compare_plat,
+                line=dict(shape='spline', width=3, color=line_color_compare),
+            ))
 
+        # Chart title
+        title_text = f"Impact of {metric_choice} on Daily Usage"
+
+        # Update layout
         fig.update_layout(
+            title=dict(
+                text=title_text,
+                font=dict(size=20),
+                x=0.5
+            ),
             xaxis_title=dict(
                 text=f"Number of Daily {metric_choice}",
-                font=dict(size=16)
+                font=dict(size=14)
             ),
             yaxis_title=dict(
                 text="Hours Spent Daily",
-                font=dict(size=16)
+                font=dict(size=14)
             ),
-            height=500,
+            height=450,  # slightly smaller
             plot_bgcolor='white',
-            showlegend=False,
-            margin=dict(t=20, l=60, r=20, b=20),
+            showlegend=True,
+            margin=dict(t=40, l=60, r=20, b=50),
             xaxis=dict(
-                tickfont=dict(size=14),
+                tickfont=dict(size=12),
                 showgrid=True,
                 gridwidth=1,
                 gridcolor='LightGray',
                 range=range_values
             ),
             yaxis=dict(
-                tickfont=dict(size=14),
+                tickfont=dict(size=12),
                 showgrid=True,
                 gridwidth=1,
                 gridcolor='LightGray'
             )
         )
 
+        # Fill the entire width of the left column
         st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def device_analysis(global_platform):
