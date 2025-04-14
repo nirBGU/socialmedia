@@ -1,5 +1,4 @@
 
-=======
 altair==5.5.0
 anyio==4.9.0
 argon2-cffi==23.1.0
